@@ -1,0 +1,42 @@
+{
+   "action": {
+      "default_title": "Automation for Google VEO™ - Auto for Google VEO™"
+   },
+   "author": {
+      "email": "kylenguyenaws@gmail.com"
+   },
+   "background": {
+      "service_worker": "service-worker-loader.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "all_frames": false,
+      "js": [ "assets/index.ts-loader-CQblo_c6.js" ],
+      "matches": [ "*://flow.google.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Auto Google VEO™ for your prompts at scale. Batch generate and auto-download videos and images on Google Flow.",
+   "host_permissions": [ "*://flow.google.com/*" ],
+   "icons": {
+      "128": "src/assets/logo.png",
+      "16": "src/assets/logo.png",
+      "24": "src/assets/logo.png",
+      "32": "src/assets/logo.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAl95D2jnhJWJFOGLaOId1m0C58L9RVVZGJ+9I4T4+Kb7lZ3RNDYwx6cNKtgs7g9bLpsLAzC7LxldcheAJcIqgItnVJbgsGO1VSf/zApClx5u9iDj2IzVmcMXW7Lz7OLquIW3G76SPDjTeFH3MYSqj1mm3I1YN58ufysYGzJlEmcBBpoWYKWef3/O9F9SDC0ko8Li80ZHYJOktJA+ciAGeic+o0LzdZ4c98Hxq1rNLVj6hLeAoxdXBWdggTdYMaAjKX5LxSWJOGunlgZHSkyfi34ygaqsYaNGfPaeOC53NVtX4jCP7DRmdWmb+UiOZs5pVEbHoS9E6yGuNrKgRFVpTzwIDAQAB",
+   "manifest_version": 3,
+   "name": "Automation for Google VEO™ - Auto for Google VEO™",
+   "offline_enabled": true,
+   "permissions": [ "storage", "unlimitedStorage", "tabs", "background", "sidePanel", "activeTab", "downloads", "debugger" ],
+   "side_panel": {
+      "default_path": "src/ui/side-panel/index.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "3.5.8.0",
+   "version_name": "3.5.8",
+   "web_accessible_resources": [ {
+      "matches": [ "*://flow.google.com/*" ],
+      "resources": [ "assets/utils-CbeazAYb.js", "assets/workflowResults-qoMMSAXH.js", "assets/imageMentions-DKZMQBTk.js", "assets/catchUploadFile.ts-DJwIizxX.js", "assets/index.ts-Dw9Ikvc4.js" ],
+      "use_dynamic_url": false
+   } ]
+}
