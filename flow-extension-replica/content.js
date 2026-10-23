@@ -171,7 +171,7 @@
       await diagnose();
       throw new Error("No visible prompt editor detected. Use Diagnose Flow UI and share the report.");
     }
-    if (!submitCandidates.length || submitCandidates[0].score < 1) {
+    if (!submitCandidates.length || submitCandidates[0].score < 8) {
       await diagnose();
       throw new Error("No likely submit control could be identified locally. Use Diagnose Flow UI and share the report; submission was not attempted.");
     }
@@ -190,7 +190,7 @@
     const before = resourceSnapshot();
     await fillPrompt(editor, payload.prompt.trim());
     const submitAfterFill = discoverSubmit()[0];
-    if (!submitAfterFill || submitAfterFill.score < 1) {
+    if (!submitAfterFill || submitAfterFill.score < 8) {
       await diagnose();
       throw new Error("Submit control could not be confirmed after prompt entry. Submission was not attempted.");
     }
