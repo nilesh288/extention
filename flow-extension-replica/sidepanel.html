@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flow Automation Replica</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header>
+    <div class="eyebrow">DEVELOPMENT BUILD · 0.1.0</div>
+    <h1>Flow Automation Replica</h1>
+    <p>Reference-based input and generation verification</p>
+  </header>
+  <main>
+    <div class="connection"><span id="dot" class="dot"></span><span id="connection">Checking Google Flow tab…</span></div>
+    <label for="prompt">Prompt</label>
+    <textarea id="prompt" rows="7" placeholder="Enter one test prompt. Use a harmless test before running a batch."></textarea>
+    <div class="actions">
+      <button id="run" class="primary">Run one prompt</button>
+      <button id="detach" class="secondary">Detach debugger</button>
+    </div>
+    <section class="status-card">
+      <div class="status-head"><h2>Generation status</h2><span id="state" class="pill">Idle</span></div>
+      <p id="detail">A button click alone is not considered successful generation.</p>
+    </section>
+    <section>
+      <h2>Activity</h2>
+      <ol id="activity" class="activity"><li class="muted">Ready for a single-prompt test.</li></ol>
+    </section>
+    <p class="warning">Chrome may show a debugger notification while this extension controls the Flow tab. This is expected for the reference-style input mechanism.</p>
+  </main>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
