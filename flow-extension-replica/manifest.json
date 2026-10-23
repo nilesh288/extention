@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Flow Automation Replica (Development)",
   "version": "0.1.0",
-  "description": "A stepwise replica of the reference Google Flow automation extension.",
+  "description": "A stepwise local replica of the reference Google Flow automation extension.",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -13,9 +13,7 @@
     "debugger"
   ],
   "host_permissions": [
-    "*://flow.google.com/*",
-    "https://configs.kylenguyen.me/*",
-    "https://configs2.kylenguyen.me/*"
+    "*://flow.google.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -29,8 +27,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://flow.google.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "*://flow.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_end"
     }
   ]
