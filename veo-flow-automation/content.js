@@ -41,37 +41,43 @@
         if (ratioOption) { ratioOption.click(); await sleep(250); }
       }
     }
-    const before = new Set([...document.querySelectorAll("video, img")]);
-    const editorForm = editor.closest("form");
-    const buttonCandidates = [...document.querySelectorAll('button,[role="button"],input[type="submit"]')].filter(visible);
-    const generate = (editorForm ? [...editorForm.querySelectorAll('button[type="submit"],input[type="submit"],[role="button"]')].find(visible) : null) ||
-      buttonCandidates.find(el => /generate|create video|create image|submit|send/i.test([
-        textOf(el), el.getAttribute("aria-label"), el.getAttribute("title"),
-        el.getAttribute("data-tooltip"), el.getAttribute("data-testid")
-      ].filter(Boolean).join(" "))) ||
-      buttonCandidates.find(el => /arrow_forward|send|play_arrow|auto_awesome/i.test([
-        el.innerHTML, el.getAttribute("aria-label"), el.getAttribute("data-icon")
-      ].filter(Boolean).join(" ")));
-    let submitMethod = "button";
-    if (generate) {
-      if (generate.disabled || generate.getAttribute("aria-disabled") === "true") {
-        throw new Error("Generate is currently disabled. Check the prompt, model, or available credits.");
-      }
-      generate.click();
-    } else {
-      // Reference workflow uses Enter as a submit path when its configured
-      // submit selector is not clicked. Flow may expose only an icon button.
-      submitMethod = "Enter key fallback";
-      editor.focus();
-      for (const type of ["keydown", "keypress", "keyup"]) {
-        editor.dispatchEvent(new KeyboardEvent(type, {
-          key: "Enter", code: "Enter", keyCode: 13, which: 13,
-          bubbles: true, cancelable: true
-        }));
-      }
+    // Current Flow UI exposes a named "Start generation" control in the prompt composer.
+    // Prefer that explicit control; never click an arbitrary form button.
+    const before = new Set([...document.querySelectorAll("flow-tile-container, video, img")]);
+    const explicitSelectors = [
+      'flow-base-prompt-box button[aria-label*="Start generation" i]',
+      'flow-base-prompt-box button[aria-label*="Generate" i]',
+      'button[aria-label*="Start generation" i]',
+      'button[aria-label*="Iniciar generación" i]',
+      'button[aria-label*="Iniciar geración" i]'
+    ];
+    let generate = null;
+    for (const selector of explicitSelectors) {
+      generate = [...document.querySelectorAll(selector)].find(el => visible(el) && !el.disabled && el.getAttribute("aria-disabled") !== "true");
+      if (generate) break;
     }
-    chrome.runtime.sendMessage({ type: "FLOW_STUDIO_LOG", level: "info", message: "Submitted prompt to Google Flow using " + submitMethod + "." }).catch(() => {});
-    return { ok: true, submitted: true, submitMethod, previousMediaCount: before.size, note: "Prompt submitted. Generation completion is controlled by Google Flow." };
+    // Fallback only to an enabled, visible button with an explicit generation label.
+    if (!generate) {
+      const candidates = [...document.querySelectorAll('button,[role="button"]')].filter(visible);
+      generate = candidates.find(el => !el.disabled && el.getAttribute("aria-disabled") !== "true" &&
+        /start generation|generate video|generate image|create video|create image/i.test([
+          el.getAttribute("aria-label"), el.getAttribute("title"), el.innerText
+        ].filter(Boolean).join(" "))) || null;
+    }
+    if (!generate) {
+      throw new Error('Prompt was filled, but the current Google Flow "Start generation" button was not found. No success was reported. Please capture a screenshot of the prompt composer.');
+    }
+    generate.click();
+    await sleep(800);
+    const buttonState = generate.isConnected
+      ? { disabled: !!generate.disabled, ariaDisabled: generate.getAttribute("aria-disabled"), label: textOf(generate) }
+      : { detached: true };
+    const mediaAfter = new Set([...document.querySelectorAll("flow-tile-container, video, img")]);
+    const visibleProgress = [...document.querySelectorAll('[role="progressbar"],mat-progress-spinner,[aria-label*="Generating" i],[aria-label*="Stop generation" i]')].some(visible);
+    const uiChanged = mediaAfter.size > before.size || visibleProgress || buttonState.detached || buttonState.disabled || buttonState.ariaDisabled === "true";
+    const submitMethod = "Generate button click";
+    chrome.runtime.sendMessage({ type: "FLOW_STUDIO_LOG", level: "info", message: "Clicked Google Flow Generate control. Generation-start confirmation: " + (uiChanged ? "UI changed" : "not detected") + "." }).catch(() => {});
+    return { ok: true, submitted: true, clickedGenerate: true, uiChanged, submitMethod, previousMediaCount: before.size, note: uiChanged ? "Generate was clicked and a UI change was observed; generation completion is not yet verified." : "Generate was clicked, but no visible start signal was detected. Check Google Flow before continuing." };
   }
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type !== "FLOW_STUDIO_RUN_PROMPT") return false;
