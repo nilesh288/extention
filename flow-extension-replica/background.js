@@ -129,7 +129,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { ok: true, detached: true };
       case "REPLICA_LOG":
       case "REPLICA_GENERATION_STATUS":
-        chrome.runtime.sendMessage(message).catch(() => {});
+        await chrome.storage.local.set({
+          replicaLastEvent: {
+            type: message.type,
+            message: message.message || "",
+            level: message.level || "info",
+            state: message.state || "",
+            elapsedMs: Number(message.elapsedMs) || 0,
+            at: Date.now()
+          }
+        });
         return { ok: true };
       default:
         return undefined;
