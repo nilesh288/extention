@@ -39,16 +39,8 @@ async function typeText(tabId, text) {
   await sendCDP(tabId, "Input.insertText", { text: String(text ?? "") });
 }
 async function keyPress(tabId, { key, code, keyCode, modifiers = 0, text, commands, keyType }) {
-  const params = {
-    key,
-    code,
-    windowsVirtualKeyCode: keyCode,
-    nativeVirtualKeyCode: keyCode
-  };
-  if (text !== undefined) {
-    params.text = text;
-    params.unmodifiedText = text;
-  }
+  const params = { key, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode };
+  if (text !== undefined) { params.text = text; params.unmodifiedText = text; }
   if (modifiers) params.modifiers = modifiers;
   if (commands) params.commands = commands;
   if (keyType) {
@@ -135,6 +127,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           lastMouse.delete(tabId);
         }
         return { ok: true, detached: true };
+      case "REPLICA_LOG":
+      case "REPLICA_GENERATION_STATUS":
+        chrome.runtime.sendMessage(message).catch(() => {});
+        return { ok: true };
       default:
         return undefined;
     }
