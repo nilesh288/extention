@@ -74,6 +74,21 @@ async function getFlowTab() {
   if (!matches.length) return null;
   return matches.find(t=>t.active) || matches[0];
 }
+async function sendPromptToTab(tabId, payload) {
+  const message = { type: "FLOW_STUDIO_RUN_PROMPT", payload };
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    const reason = String(error?.message || error);
+    if (!/receiving end does not exist|could not establish connection|message port closed/i.test(reason)) throw error;
+    // The Flow tab may have been open before the extension was reloaded, so its
+    // declared content script was never injected into that document. Inject it
+    // on demand, then retry the same message once.
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return await chrome.tabs.sendMessage(tabId, message);
+  }
+}
 async function runBatch() {
   if(running)return;
   const pending=queue.filter(q=>q.status==="pending");
@@ -90,7 +105,8 @@ async function runBatch() {
       if(stopRequested)break;
       item.status="running";renderQueue();await persistQueue();
       try {
-        const response=await chrome.tabs.sendMessage(tab.id,{type:"FLOW_STUDIO_RUN_PROMPT",payload:{prompt:item.prompt,mode:item.mode,aspectRatio:item.ratio,outputs:item.outputs}});
+        const payload={prompt:item.prompt,mode:item.mode,aspectRatio:item.ratio,outputs:item.outputs};
+        const response=await sendPromptToTab(tab.id,payload);
         if(!response?.ok)throw new Error(response?.error||"Google Flow did not confirm submission.");
         item.status="completed";log("Submitted: "+item.prompt.slice(0,100),"success");
         const delay=Math.max(0,Number(settings.delay)||0)*1000;
