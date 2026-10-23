@@ -73,18 +73,23 @@ async function detachDebugger() {
 }
 $("run").addEventListener("click", runOne);
 $("detach").addEventListener("click", detachDebugger);
-chrome.runtime.onMessage.addListener(message => {
-  if (message?.type === "REPLICA_GENERATION_STATUS") {
-    const state = message.state || "Unknown";
+function handleEvent(event) {
+  if (!event) return;
+  if (event.type === "REPLICA_GENERATION_STATUS") {
+    const state = event.state || "Unknown";
     const detail = state === "generating" ? "Google Flow generation activity was detected."
       : state === "submitted" ? "Submitted; waiting for generation evidence."
       : state === "completed" ? "Generation appears to have completed and a new resource was detected."
       : state === "timeout" ? "Generation could not be verified before timeout."
       : state;
     setState(state, detail);
-  } else if (message?.type === "REPLICA_LOG") {
-    log(message.message || "Extension event", message.level || "info");
+  } else if (event.type === "REPLICA_LOG") {
+    log(event.message || "Extension event", event.level || "info");
   }
+}
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.replicaLastEvent) handleEvent(changes.replicaLastEvent.newValue);
 });
+chrome.storage.local.get("replicaLastEvent").then(data => handleEvent(data.replicaLastEvent));
 refreshConnection();
 setInterval(refreshConnection, 12000);
