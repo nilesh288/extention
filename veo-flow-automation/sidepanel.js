@@ -55,25 +55,24 @@ async function addPrompts() {
   await persistQueue(); renderQueue(); log("Added "+prompts.length+" prompt(s) to the queue."); toast("Added "+prompts.length+" prompt(s) to queue."); showTab("queue");
 }
 
-// Query all tabs and parse their URLs ourselves. This is more tolerant of Flow's
-// changing URL paths and avoids relying on a restrictive tabs.query URL filter.
+// The reference extension's manifest targets flow.google.com. Include that
+// canonical host here; checking only flow.google misses the user's actual tab.
 function isGoogleFlowTab(tab) {
   try {
     const url = new URL(tab.url || "");
     const host = url.hostname.toLowerCase();
     const path = url.pathname.toLowerCase();
-    return host === "flow.google" ||
-      host.endsWith(".flow.google") ||
-      ((host === "labs.google" || host === "labs.google.com" || host.endsWith(".labs.google.com")) &&
-        (path.includes("/fx/tools/flow") || path === "/" || path.includes("flow")));
+    if (host === "flow.google.com" || host.endsWith(".flow.google.com") ||
+        host === "flow.google" || host.endsWith(".flow.google")) return true;
+    return (host === "labs.google" || host === "labs.google.com" || host.endsWith(".labs.google.com")) &&
+      (path.includes("/fx/tools/flow") || path === "/" || path.includes("flow"));
   } catch { return false; }
 }
 async function getFlowTab() {
   const tabs = await chrome.tabs.query({});
   const matches = tabs.filter(isGoogleFlowTab);
   if (!matches.length) return null;
-  const activeCurrentWindow = matches.find(t => t.active && t.windowId != null);
-  return activeCurrentWindow || matches.find(t => t.active) || matches[0];
+  return matches.find(t=>t.active) || matches[0];
 }
 async function runBatch() {
   if(running)return;
@@ -108,9 +107,11 @@ async function runBatch() {
   }
 }
 async function refreshConnection() {
-  const tab=await getFlowTab();const ok=!!tab;
-  $("connectionDot").classList.toggle("ok",ok);$("connectionDot").classList.toggle("bad",!ok);
-  $("connectionText").textContent=ok?"Google Flow tab detected":"Open Google Flow tab to connect";
+  try {
+    const tab=await getFlowTab();const ok=!!tab;
+    $("connectionDot").classList.toggle("ok",ok);$("connectionDot").classList.toggle("bad",!ok);
+    $("connectionText").textContent=ok?"Google Flow tab detected ("+new URL(tab.url).hostname+")":"Open Google Flow tab to connect";
+  } catch(error) { $("connectionText").textContent="Tab check failed: "+String(error.message||error); }
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
 document.querySelectorAll(".mode-card").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
@@ -120,7 +121,7 @@ $("runQueue").addEventListener("click",runBatch);$("stopRun").addEventListener("
 $("clearQueue").addEventListener("click",async()=>{if(running){toast("Stop the batch before clearing the queue.");return;}queue=[];await persistQueue();renderQueue();});
 $("clearActivity").addEventListener("click",async()=>{activity=[];await chrome.storage.local.set({flowStudioActivity:activity});renderActivity();});
 $("refreshStatus").addEventListener("click",refreshConnection);
-$("openFlow").addEventListener("click",async()=>{const tab=await getFlowTab();if(tab?.id){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId)await chrome.windows.update(tab.windowId,{focused:true});}else await chrome.tabs.create({url:"https://labs.google/fx/tools/flow"});});
+$("openFlow").addEventListener("click",async()=>{const tab=await getFlowTab();if(tab?.id){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId)await chrome.windows.update(tab.windowId,{focused:true});}else await chrome.tabs.create({url:"https://flow.google.com/"});});
 $("saveSettings").addEventListener("click",async()=>{await savePrefs();toast("Preferences saved.");log("Preferences saved.");});
 ["model","ratio","outputs","delay","autoDownload","folder","filenamePrefix","numberFiles","pauseOnError","confirmStart"].forEach(id=>$(id).addEventListener("change",savePrefs));
 (async()=>{const data=await chrome.storage.local.get(["flowStudioSettings","flowStudioQueue","flowStudioActivity"]);settings={...DEFAULTS,...(data.flowStudioSettings||{})};queue=Array.isArray(data.flowStudioQueue)?data.flowStudioQueue:[];activity=Array.isArray(data.flowStudioActivity)?data.flowStudioActivity:[];hydrate();renderQueue();renderActivity();updatePromptCount();refreshConnection();setInterval(refreshConnection,15000);})();
