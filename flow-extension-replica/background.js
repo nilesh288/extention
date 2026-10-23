@@ -1,8 +1,3 @@
-const CONFIG_URLS = [
-  "https://configs.kylenguyen.me/config/flow-automation-2",
-  "https://configs2.kylenguyen.me/config/flow-automation-2"
-];
-const CONFIG_HEADERS = { "X-Client-Secret": "YES_THAT_IS_VERY_EASY_RIGHT_?!$" };
 const attachedTabs = new Set();
 const lastMouse = new Map();
 
@@ -83,30 +78,11 @@ async function clickAt(tabId, x, y) {
     type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1
   });
 }
-async function getRemoteConfig() {
-  let lastError = "No selector configuration endpoint responded.";
-  for (const url of CONFIG_URLS) {
-    try {
-      const response = await fetch(url, { headers: CONFIG_HEADERS, cache: "no-store" });
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      const config = await response.json();
-      if (!config || typeof config.selectors !== "object" || !config.selectors) {
-        throw new Error("Response did not contain a selectors object.");
-      }
-      return { ok: true, config, source: url };
-    } catch (error) {
-      lastError = url + ": " + String(error?.message || error);
-    }
-  }
-  return { ok: false, error: lastError };
-}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = sender.tab?.id ?? message.tabId;
   (async () => {
     switch (message?.type) {
-      case "GET_REMOTE_CONFIG":
-        return await getRemoteConfig();
       case "DEBUGGER_CLICK":
         if (!Number.isInteger(tabId)) throw new Error("No target tab ID.");
         await clickAt(tabId, Number(message.x), Number(message.y));
@@ -136,6 +112,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             level: message.level || "info",
             state: message.state || "",
             elapsedMs: Number(message.elapsedMs) || 0,
+            at: Date.now()
+          }
+        });
+        return { ok: true };
+      case "REPLICA_DIAGNOSTIC":
+        await chrome.storage.local.set({
+          replicaDiagnostic: message.report || {},
+          replicaLastEvent: {
+            type: "REPLICA_LOG",
+            message: "Diagnostic report captured from the current Flow page.",
+            level: "info",
             at: Date.now()
           }
         });
