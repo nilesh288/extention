@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Flow Studio — Batch Assistant",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A configurable prompt queue and download assistant for Google Flow.",
   "permissions": [
     "storage",
     "sidePanel",
     "tabs",
     "downloads",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://flow.google.com/*",
