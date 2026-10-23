@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Flow Automation Replica (Development)",
+  "version": "0.1.0",
+  "description": "A stepwise replica of the reference Google Flow automation extension.",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "sidePanel",
+    "activeTab",
+    "downloads",
+    "debugger"
+  ],
+  "host_permissions": [
+    "*://flow.google.com/*",
+    "https://configs.kylenguyen.me/*",
+    "https://configs2.kylenguyen.me/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open Flow Automation Replica"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://flow.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
