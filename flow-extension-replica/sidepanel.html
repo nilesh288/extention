@@ -17,9 +17,18 @@
     <label for="prompt">Prompt</label>
     <textarea id="prompt" rows="7" placeholder="Enter one test prompt. Use a harmless test before running a batch."></textarea>
     <div class="actions">
+      <button id="diagnose" class="secondary">Diagnose Flow UI</button>
       <button id="run" class="primary">Run one prompt</button>
-      <button id="detach" class="secondary">Detach debugger</button>
     </div>
+    <div class="actions">
+      <button id="detach" class="secondary">Detach debugger</button>
+      <button id="copyDiagnostic" class="secondary">Copy diagnostic report</button>
+    </div>
+    <section class="status-card">
+      <div class="status-head"><h2>Local UI diagnostic</h2><span class="pill">No remote config</span></div>
+      <p id="diagnosticSummary">Run Diagnose Flow UI and share the report if detection fails.</p>
+      <textarea id="diagnostic" rows="8" readonly placeholder="Visible editors and buttons will appear here."></textarea>
+    </section>
     <section class="status-card">
       <div class="status-head"><h2>Generation status</h2><span id="state" class="pill">Idle</span></div>
       <p id="detail">A button click alone is not considered successful generation.</p>
