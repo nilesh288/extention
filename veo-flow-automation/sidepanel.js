@@ -108,7 +108,7 @@ async function runBatch() {
         const payload={prompt:item.prompt,mode:item.mode,aspectRatio:item.ratio,outputs:item.outputs};
         const response=await sendPromptToTab(tab.id,payload);
         if(!response?.ok)throw new Error(response?.error||"Google Flow did not confirm submission.");
-        item.status="completed";log("Submitted: "+item.prompt.slice(0,100),"success");
+        item.status="submitted";log("Generate button clicked (start not guaranteed): "+item.prompt.slice(0,100), response.uiChanged ? "success" : "info");
         const delay=Math.max(0,Number(settings.delay)||0)*1000;
         if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
       } catch(error) {
@@ -119,7 +119,7 @@ async function runBatch() {
     }
   } finally {
     running=false;$("runState").textContent=stopRequested?"Stopped":"Ready";$("runState").classList.remove("running");$("startRun").disabled=false;$("addQueue").disabled=false;$("stopRun").classList.add("hidden");renderQueue();await persistQueue();
-    log(stopRequested?"Batch stopped by user.":"Batch run finished.");
+    log(stopRequested ? "Batch stopped by user." : "Batch actions finished. Check Google Flow for generation progress and completed videos.");
   }
 }
 async function refreshConnection() {
