@@ -54,19 +54,38 @@ async function addPrompts() {
   queue.push(...prompts.map(prompt=>({id:crypto.randomUUID(),prompt,mode,ratio:settings.ratio,outputs:Number(settings.outputs)||1,status:"pending"})));
   await persistQueue(); renderQueue(); log("Added "+prompts.length+" prompt(s) to the queue."); toast("Added "+prompts.length+" prompt(s) to queue."); showTab("queue");
 }
+
+// Query all tabs and parse their URLs ourselves. This is more tolerant of Flow's
+// changing URL paths and avoids relying on a restrictive tabs.query URL filter.
+function isGoogleFlowTab(tab) {
+  try {
+    const url = new URL(tab.url || "");
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase();
+    return host === "flow.google" ||
+      host.endsWith(".flow.google") ||
+      ((host === "labs.google" || host === "labs.google.com" || host.endsWith(".labs.google.com")) &&
+        (path.includes("/fx/tools/flow") || path === "/" || path.includes("flow")));
+  } catch { return false; }
+}
 async function getFlowTab() {
-  const tabs=await chrome.tabs.query({url:["https://flow.google/*","https://labs.google/*"]});
-  return tabs.find(t=>t.active)||tabs[0]||null;
+  const tabs = await chrome.tabs.query({});
+  const matches = tabs.filter(isGoogleFlowTab);
+  if (!matches.length) return null;
+  const activeCurrentWindow = matches.find(t => t.active && t.windowId != null);
+  return activeCurrentWindow || matches.find(t => t.active) || matches[0];
 }
 async function runBatch() {
   if(running)return;
   const pending=queue.filter(q=>q.status==="pending");
   if(!pending.length){toast("There are no pending prompts.");return;}
   if(settings.confirmStart&&!confirm("Run "+pending.length+" queued prompt(s) in Google Flow?"))return;
-  const tab=await getFlowTab();
-  if(!tab){toast("Open Google Flow in a tab first.");log("Cannot start: Google Flow tab not found.","error");return;}
+  let tab;
+  try { tab = await getFlowTab(); }
+  catch(error) { toast("Could not inspect browser tabs: "+String(error.message||error)); return; }
+  if(!tab){toast("Google Flow tab not found. Check the Flow tab URL, then click Refresh status.");log("Cannot start: Google Flow tab not found. No open tab matched a supported Flow URL.", "error");return;}
   running=true;stopRequested=false; $("runState").textContent="Running";$("runState").classList.add("running");$("startRun").disabled=true;$("addQueue").disabled=true;$("stopRun").classList.remove("hidden");renderQueue();
-  log("Batch started: "+pending.length+" prompt(s).");
+  log("Batch started: "+pending.length+" prompt(s). Target tab: "+(tab.url||"Google Flow"));
   try {
     for(const item of pending) {
       if(stopRequested)break;
@@ -91,7 +110,7 @@ async function runBatch() {
 async function refreshConnection() {
   const tab=await getFlowTab();const ok=!!tab;
   $("connectionDot").classList.toggle("ok",ok);$("connectionDot").classList.toggle("bad",!ok);
-  $("connectionText").textContent=ok?"Google Flow tab detected":"Open flow.google to connect";
+  $("connectionText").textContent=ok?"Google Flow tab detected":"Open Google Flow tab to connect";
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
 document.querySelectorAll(".mode-card").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
@@ -101,7 +120,7 @@ $("runQueue").addEventListener("click",runBatch);$("stopRun").addEventListener("
 $("clearQueue").addEventListener("click",async()=>{if(running){toast("Stop the batch before clearing the queue.");return;}queue=[];await persistQueue();renderQueue();});
 $("clearActivity").addEventListener("click",async()=>{activity=[];await chrome.storage.local.set({flowStudioActivity:activity});renderActivity();});
 $("refreshStatus").addEventListener("click",refreshConnection);
-$("openFlow").addEventListener("click",async()=>{const tab=await getFlowTab();if(tab?.id){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId)await chrome.windows.update(tab.windowId,{focused:true});}else await chrome.tabs.create({url:"https://flow.google/"});});
+$("openFlow").addEventListener("click",async()=>{const tab=await getFlowTab();if(tab?.id){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId)await chrome.windows.update(tab.windowId,{focused:true});}else await chrome.tabs.create({url:"https://labs.google/fx/tools/flow"});});
 $("saveSettings").addEventListener("click",async()=>{await savePrefs();toast("Preferences saved.");log("Preferences saved.");});
 ["model","ratio","outputs","delay","autoDownload","folder","filenamePrefix","numberFiles","pauseOnError","confirmStart"].forEach(id=>$(id).addEventListener("change",savePrefs));
 (async()=>{const data=await chrome.storage.local.get(["flowStudioSettings","flowStudioQueue","flowStudioActivity"]);settings={...DEFAULTS,...(data.flowStudioSettings||{})};queue=Array.isArray(data.flowStudioQueue)?data.flowStudioQueue:[];activity=Array.isArray(data.flowStudioActivity)?data.flowStudioActivity:[];hydrate();renderQueue();renderActivity();updatePromptCount();refreshConnection();setInterval(refreshConnection,15000);})();
