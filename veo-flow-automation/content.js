@@ -42,13 +42,36 @@
       }
     }
     const before = new Set([...document.querySelectorAll("video, img")]);
-    const generate = findButton(/^(generate|create|make|run|submit)\b/i) ||
-      [...document.querySelectorAll('button,[role="button"]')].filter(visible).find(el => /generate|create video|create image/i.test(textOf(el)));
-    if (!generate) throw new Error("Prompt is filled, but the Generate button was not detected. Check Flow's current UI.");
-    if (generate.disabled || generate.getAttribute("aria-disabled") === "true") throw new Error("Generate is currently disabled. Check the prompt, model, or available credits.");
-    generate.click();
-    chrome.runtime.sendMessage({ type: "FLOW_STUDIO_LOG", level: "info", message: "Submitted prompt to Google Flow." }).catch(() => {});
-    return { ok: true, submitted: true, previousMediaCount: before.size, note: "Prompt submitted. Generation completion is controlled by Google Flow." };
+    const editorForm = editor.closest("form");
+    const buttonCandidates = [...document.querySelectorAll('button,[role="button"],input[type="submit"]')].filter(visible);
+    const generate = (editorForm ? [...editorForm.querySelectorAll('button[type="submit"],input[type="submit"],[role="button"]')].find(visible) : null) ||
+      buttonCandidates.find(el => /generate|create video|create image|submit|send/i.test([
+        textOf(el), el.getAttribute("aria-label"), el.getAttribute("title"),
+        el.getAttribute("data-tooltip"), el.getAttribute("data-testid")
+      ].filter(Boolean).join(" "))) ||
+      buttonCandidates.find(el => /arrow_forward|send|play_arrow|auto_awesome/i.test([
+        el.innerHTML, el.getAttribute("aria-label"), el.getAttribute("data-icon")
+      ].filter(Boolean).join(" ")));
+    let submitMethod = "button";
+    if (generate) {
+      if (generate.disabled || generate.getAttribute("aria-disabled") === "true") {
+        throw new Error("Generate is currently disabled. Check the prompt, model, or available credits.");
+      }
+      generate.click();
+    } else {
+      // Reference workflow uses Enter as a submit path when its configured
+      // submit selector is not clicked. Flow may expose only an icon button.
+      submitMethod = "Enter key fallback";
+      editor.focus();
+      for (const type of ["keydown", "keypress", "keyup"]) {
+        editor.dispatchEvent(new KeyboardEvent(type, {
+          key: "Enter", code: "Enter", keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        }));
+      }
+    }
+    chrome.runtime.sendMessage({ type: "FLOW_STUDIO_LOG", level: "info", message: "Submitted prompt to Google Flow using " + submitMethod + "." }).catch(() => {});
+    return { ok: true, submitted: true, submitMethod, previousMediaCount: before.size, note: "Prompt submitted. Generation completion is controlled by Google Flow." };
   }
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type !== "FLOW_STUDIO_RUN_PROMPT") return false;
