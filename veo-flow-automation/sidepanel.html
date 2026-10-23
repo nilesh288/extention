@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand-mark">F</div>
+    <div class="brand-copy"><strong>Flow Studio</strong><span>Batch assistant</span></div>
+    <button id="openFlow" class="icon-btn" title="Open Google Flow" aria-label="Open Google Flow">↗</button>
+  </header>
+  <div class="connection"><span class="dot" id="connectionDot"></span><span id="connectionText">Checking Google Flow…</span><button id="refreshStatus" class="text-btn">Refresh</button></div>
+  <nav class="tabs" aria-label="Main navigation">
+    <button class="tab active" data-tab="generate">Generate</button>
+    <button class="tab" data-tab="queue">Queue <span class="count" id="queueCount">0</span></button>
+    <button class="tab" data-tab="settings">Settings</button>
+    <button class="tab" data-tab="activity">Activity</button>
+  </nav>
+
+  <main>
+    <section class="view active" id="view-generate">
+      <div class="section-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Create a batch</h1></div><span class="pill" id="runState">Ready</span></div>
+      <label class="field-label" for="mode">Generation mode</label>
+      <div class="mode-grid" id="modeGrid">
+        <button class="mode-card selected" data-mode="textToVideo"><span class="mode-icon">▶</span><span>Text to video</span></button>
+        <button class="mode-card" data-mode="imageToVideo"><span class="mode-icon">▧</span><span>Image to video</span></button>
+        <button class="mode-card" data-mode="textToImage"><span class="mode-icon">✦</span><span>Text to image</span></button>
+        <button class="mode-card" data-mode="imageToImage"><span class="mode-icon">◫</span><span>Image to image</span></button>
+      </div>
+      <label class="field-label" for="prompts">Prompts <span class="muted">one prompt per line</span></label>
+      <textarea id="prompts" rows="7" placeholder="A cinematic aerial view of a futuristic city at sunrise&#10;Close-up of a jet engine turbine spinning in a test facility&#10;A satellite orbiting above Earth"></textarea>
+      <div class="inline-meta"><span id="promptCount">0 prompts</span><button id="clearPrompts" class="text-btn">Clear</button></div>
+      <div class="two-col">
+        <div><label class="field-label" for="model">Model</label><select id="model"><option value="default">Use current Flow selection</option><option value="veo">Veo (if available)</option></select></div>
+        <div><label class="field-label" for="ratio">Aspect ratio</label><select id="ratio"><option value="current">Use current selection</option><option value="16:9">16:9 Landscape</option><option value="9:16">9:16 Portrait</option><option value="1:1">1:1 Square</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
+      </div>
+      <div class="two-col">
+        <div><label class="field-label" for="outputs">Outputs per prompt</label><select id="outputs"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+        <div><label class="field-label" for="delay">Delay between prompts</label><select id="delay"><option value="0">No extra delay</option><option value="5">5 seconds</option><option value="10" selected>10 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select></div>
+      </div>
+      <div class="callout"><span>ⓘ</span><p>Flow controls may vary by account and model. Review the first prompt in the Flow tab before running a large batch.</p></div>
+      <div class="button-row"><button id="addQueue" class="btn secondary">Add to queue</button><button id="startRun" class="btn primary">▶ Start batch</button></div>
+      <button id="stopRun" class="btn danger full hidden">Stop batch</button>
+    </section>
+
+    <section class="view" id="view-queue">
+      <div class="section-heading"><div><p class="eyebrow">UP NEXT</p><h1>Prompt queue</h1></div><button id="clearQueue" class="text-btn">Clear all</button></div>
+      <div id="queueList" class="queue-list"></div>
+      <div id="queueEmpty" class="empty-state"><div class="empty-icon">☷</div><strong>Your queue is empty</strong><p>Add prompts from Generate to prepare a batch.</p></div>
+      <button id="runQueue" class="btn primary full">▶ Run queued prompts</button>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="section-heading"><div><p class="eyebrow">PREFERENCES</p><h1>Settings</h1></div></div>
+      <div class="settings-card">
+        <h2>Downloads</h2>
+        <label class="toggle-row"><span><strong>Automatic downloads</strong><small>Download media when a direct file URL is detected.</small></span><input type="checkbox" id="autoDownload" checked><i></i></label>
+        <label class="field-label" for="folder">Subfolder in Downloads</label><input id="folder" type="text" placeholder="Flow Studio" maxlength="80">
+        <label class="field-label" for="filenamePrefix">Filename prefix</label><input id="filenamePrefix" type="text" placeholder="Shot_" maxlength="40">
+        <label class="toggle-row"><span><strong>Number filenames</strong><small>Use sequential names such as Shot_001.</small></span><input type="checkbox" id="numberFiles" checked><i></i></label>
+      </div>
+      <div class="settings-card">
+        <h2>Batch behaviour</h2>
+        <label class="toggle-row"><span><strong>Pause on error</strong><small>Stop the queue if Flow cannot accept a prompt.</small></span><input type="checkbox" id="pauseOnError" checked><i></i></label>
+        <label class="toggle-row"><span><strong>Confirm before starting</strong><small>Ask before submitting a queued batch.</small></span><input type="checkbox" id="confirmStart"><i></i></label>
+      </div>
+      <button id="saveSettings" class="btn primary full">Save preferences</button>
+      <p class="footnote">Preferences are stored locally in your browser.</p>
+    </section>
+
+    <section class="view" id="view-activity">
+      <div class="section-heading"><div><p class="eyebrow">RUN HISTORY</p><h1>Activity</h1></div><button id="clearActivity" class="text-btn">Clear</button></div>
+      <div id="activityList" class="activity-list"></div>
+      <div id="activityEmpty" class="empty-state"><div class="empty-icon">◷</div><strong>No activity yet</strong><p>Batch progress and errors will appear here.</p></div>
+    </section>
+  </main>
+  <footer><span class="footer-dot"></span> Runs locally in your browser <span class="version">v1.0.0</span></footer>
+  <div id="toast" class="toast" role="status"></div>
+</div>
+<script src="sidepanel.js"></script>
+</body>
+</html>
