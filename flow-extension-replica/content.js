@@ -46,13 +46,13 @@
   async function fillPrompt(editor, prompt) {
     await debuggerClick(editor);
     await sleep(150);
-    // Ctrl+A and Backspace are real debugger keyboard events, then text is inserted via CDP.
     await debuggerKey({ key: "a", code: "KeyA", keyCode: 65, modifiers: 2 });
     await debuggerKey({ key: "Backspace", code: "Backspace", keyCode: 8 });
     await debuggerType(prompt);
     await sleep(300);
-    const value = (editor.innerText ?? editor.value ?? "").trim();
-    if (value && !value.includes(prompt.slice(0, Math.min(20, prompt.length)))) {
+    const value = String(editor.innerText ?? editor.value ?? "").trim();
+    const expectedPrefix = prompt.slice(0, Math.min(20, prompt.length));
+    if (!value || !value.includes(expectedPrefix)) {
       throw new Error("Prompt text verification failed after debugger input; submit was not attempted.");
     }
   }
@@ -66,8 +66,7 @@
     return urls;
   }
   async function waitForGeneration(config, before, timeoutMs = 15 * 60 * 1000) {
-    const selectors = config.selectors;
-    const stopSelector = selectors.stopButton;
+    const stopSelector = config.selectors.stopButton;
     const startedAt = Date.now();
     let sawGenerating = false;
     let sawNewResource = false;
@@ -79,19 +78,14 @@
       const stop = firstVisible(stopSelector);
       const now = resourceSnapshot();
       const newResources = [...now].filter(url => !before.has(url));
-      if (stop) {
-        if (!sawGenerating) {
-          sawGenerating = true;
-          await status("generating");
-        }
+      if (stop && !sawGenerating) {
+        sawGenerating = true;
+        await status("generating");
       }
       if (newResources.length) sawNewResource = true;
       if (now.size === lastResourceCount) stableResourceChecks++;
       else stableResourceChecks = 0;
       lastResourceCount = now.size;
-
-      // Do not infer completion from a click. Require evidence that generation appeared,
-      // then stopped, and a new media resource exists.
       if (sawGenerating && !stop && sawNewResource && stableResourceChecks >= 3) {
         await status("completed");
         return { state: "completed", newResources };
@@ -110,10 +104,8 @@
     };
   }
   async function runPrompt(payload) {
-    if (!payload || typeof payload.prompt !== "string" || !payload.prompt.trim()) {
-      throw new Error("Prompt is empty.");
-    }
-    if (!location.hostname.endsWith("flow.google.com")) {
+    if (!payload || typeof payload.prompt !== "string" || !payload.prompt.trim()) throw new Error("Prompt is empty.");
+    if (location.hostname !== "flow.google.com" && !location.hostname.endsWith(".flow.google.com")) {
       throw new Error("This tab is not on flow.google.com.");
     }
     const config = await loadConfig();
