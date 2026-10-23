@@ -37,7 +37,7 @@ async function runOne() {
   if (!tab?.id) { setState("Blocked", "Google Flow tab was not found."); await refreshConnection(); return; }
   busy = true;
   $("run").disabled = true;
-  setState("Checking", "Loading the reference selector configuration.");
+  setState("Checking", "Detecting the prompt editor and submit control locally.");
   log("Starting one-prompt test.");
   try {
     const response = await chrome.tabs.sendMessage(tab.id, { type: "REPLICA_RUN_PROMPT", payload: { prompt } });
@@ -71,6 +71,41 @@ async function detachDebugger() {
     log(String(error?.message || error), "error");
   }
 }
+async function diagnoseFlow() {
+  const tab = await getFlowTab();
+  if (!tab?.id) { setState("No tab", "Open Google Flow first."); return; }
+  try {
+    setState("Diagnosing", "Inspecting visible local UI controls.");
+    const response = await chrome.tabs.sendMessage(tab.id, { type: "REPLICA_DIAGNOSE_FLOW" });
+    if (!response?.ok) throw new Error(response?.error || "Diagnostic request failed.");
+    displayDiagnostic(response.report);
+    log("Diagnostic captured: " + response.report.editors.length + " editors, " + response.report.buttons.length + " buttons.");
+    setState("Diagnostic ready", "Copy the report and paste it into this chat if detection still fails.");
+  } catch (error) {
+    const message = String(error?.message || error);
+    setState("Diagnostic failed", message);
+    log(message, "error");
+  }
+}
+function displayDiagnostic(report) {
+  if (!report) return;
+  $("diagnostic").value = JSON.stringify(report, null, 2);
+  $("diagnosticSummary").textContent = report.title + " — " + report.editors.length + " visible editors, " + report.buttons.length + " visible buttons, " + report.hints.length + " status hints.";
+}
+async function copyDiagnostic() {
+  const value = $("diagnostic").value;
+  if (!value) { setState("No report", "Run Diagnose Flow UI first."); return; }
+  try {
+    await navigator.clipboard.writeText(value);
+    log("Diagnostic report copied to clipboard.", "success");
+  } catch {
+    $("diagnostic").focus();
+    $("diagnostic").select();
+    setState("Copy manually", "The report is selected; copy it with Ctrl+C.");
+  }
+}
+$("diagnose").addEventListener("click", diagnoseFlow);
+$("copyDiagnostic").addEventListener("click", copyDiagnostic);
 $("run").addEventListener("click", runOne);
 $("detach").addEventListener("click", detachDebugger);
 function handleEvent(event) {
@@ -90,6 +125,9 @@ function handleEvent(event) {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "local" && changes.replicaLastEvent) handleEvent(changes.replicaLastEvent.newValue);
 });
-chrome.storage.local.get("replicaLastEvent").then(data => handleEvent(data.replicaLastEvent));
+chrome.storage.local.get(["replicaLastEvent", "replicaDiagnostic"]).then(data => {
+  handleEvent(data.replicaLastEvent);
+  if (data.replicaDiagnostic) displayDiagnostic(data.replicaDiagnostic);
+});
 refreshConnection();
 setInterval(refreshConnection, 12000);
