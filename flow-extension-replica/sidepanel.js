@@ -29,6 +29,19 @@ async function refreshConnection() {
   $("dot").classList.toggle("bad", !tab);
   $("connection").textContent = tab ? "Google Flow tab detected" : "Open flow.google.com in a tab";
 }
+
+async function sendToFlowContent(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    const messageText = String(error?.message || error);
+    if (!/receiving end does not exist|could not establish connection/i.test(messageText)) throw error;
+    log("Content script not connected; injecting it into the selected Flow tab and retrying.");
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+    await new Promise(resolve => setTimeout(resolve, 250));
+    return await chrome.tabs.sendMessage(tabId, message);
+  }
+}
 async function runOne() {
   if (busy) return;
   const prompt = $("prompt").value.trim();
@@ -40,7 +53,7 @@ async function runOne() {
   setState("Checking", "Detecting the prompt editor and submit control locally.");
   log("Starting one-prompt test.");
   try {
-    const response = await chrome.tabs.sendMessage(tab.id, { type: "REPLICA_RUN_PROMPT", payload: { prompt } });
+    const response = await sendToFlowContent(tab.id, { type: "REPLICA_RUN_PROMPT", payload: { prompt } });
     if (!response?.ok) {
       setState(response?.submitted ? "Unverified" : "Failed", response?.error || "Generation completion was not confirmed.");
       log(response?.error || "Generation completion was not confirmed.", "error");
@@ -76,7 +89,7 @@ async function diagnoseFlow() {
   if (!tab?.id) { setState("No tab", "Open Google Flow first."); return; }
   try {
     setState("Diagnosing", "Inspecting visible local UI controls.");
-    const response = await chrome.tabs.sendMessage(tab.id, { type: "REPLICA_DIAGNOSE_FLOW" });
+    const response = await sendToFlowContent(tab.id, { type: "REPLICA_DIAGNOSE_FLOW" });
     if (!response?.ok) throw new Error(response?.error || "Diagnostic request failed.");
     displayDiagnostic(response.report);
     log("Diagnostic captured: " + response.report.editors.length + " editors, " + response.report.buttons.length + " buttons.");
