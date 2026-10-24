@@ -10,7 +10,8 @@
     "sidePanel",
     "activeTab",
     "downloads",
-    "debugger"
+    "debugger",
+    "scripting"
   ],
   "host_permissions": [
     "*://flow.google.com/*"
